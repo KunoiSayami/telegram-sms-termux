@@ -17,3 +17,35 @@
  ** You should have received a copy of the GNU Affero General Public License
  ** along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+#[allow(dead_code)]
+pub mod v1 {
+
+    pub const CREATE_STATEMENTS: &str = r#"
+    CREATE TABLE "call_logs" (
+        "user"	TEXT NOT NULL,
+        "password"	TEXT NOT NULL,
+        "uid" TEXT NOT NULL,
+        PRIMARY KEY("user")
+    );
+
+    CREATE TABLE "client_meta" (
+        "key"	TEXT NOT NULL,
+        "value"	TEXT NOT NULL,
+        PRIMARY KEY("key")
+    );
+    
+    INSERT INTO "client_meta" VALUES ('version', '1');
+    "#;
+
+
+    pub const DROP_STATEMENTS: &str = r#"
+    
+    DROP TABLE "call_logs";
+    DROP TABLE "client_meta";
+    "#;
+
+    pub const VERSION: &str = "1";
+}
+
+pub use v1 as current;
+pub use v1::VERSION as CURRENT_VERSION;
