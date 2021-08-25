@@ -20,16 +20,56 @@
 
 mod datastructures;
 mod database;
+mod test;
 
-use datastructures::RawCallLogList;
+use clap::{App, ArgMatches};
+use datastructures::{BatteryStatus, CallLog, RawCallLogList};
+use sqlx::Connection;
 use tokio::process::Command;
 
+async fn query_call_log() -> anyhow::Result<Vec<CallLog>> {
+    let output = Command::new("termux-call-log")
+        .output().await?.stdout;
+    let output = String::from_utf8(output)?;
+    let logs: RawCallLogList = serde_json::from_str(&output)?;
+    Ok(logs.convert_to_vec())
+}
 
-#[tokio::main]
-async fn main() {
-    let cmd = Command::new("termux-call-log")
-        .output().await.unwrap().stdout;
-    let s = String::from_utf8(cmd).unwrap();
-    let log: RawCallLogList = serde_json::from_str(&s).unwrap();
-    println!("{:#?}", &log);
+async fn fetch_battery_status() -> anyhow::Result<BatteryStatus> {
+    let output = Command::new("termux-battery-status")
+        .output()
+        .await?
+        .stdout;
+    let output = String::from_utf8(output)?;
+    let status: BatteryStatus = serde_json::from_str(&output)?;
+    Ok(status)
+}
+
+async fn async_main<'a>(matches: &ArgMatches<'a>) -> anyhow::Result<()> {
+    let mut conn = sqlx::sqlite::SqliteConnection::connect("sms_client.db").await?;
+    let first_run = sqlx::query(r#"SELECT name FROM sqlite_master WHERE type='table' AND "name"=?"#)
+        .bind(database::current::META_TABLE)
+        .fetch_all(&mut conn)
+        .await?
+        .is_empty();
+    if first_run {
+        sqlx::query(database::current::CREATE_STATEMENTS)
+            .execute(&mut conn)
+            .await?;
+    }
+    let battery_status = fetch_battery_status().await?;
+    Ok(())
+}
+
+fn main() -> anyhow::Result<()> {
+    let matches = App::new(env!("CARGO_PKG_NAME"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .get_matches();
+
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?
+        .block_on(async_main(&matches))?;
+
+    Ok(())
 }

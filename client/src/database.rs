@@ -22,10 +22,22 @@ pub mod v1 {
 
     pub const CREATE_STATEMENTS: &str = r#"
     CREATE TABLE "call_logs" (
-        "user"	TEXT NOT NULL,
-        "password"	TEXT NOT NULL,
-        "uid" TEXT NOT NULL,
-        PRIMARY KEY("user")
+        "identifier" TEXT NOT NULL,
+        "timestamp" INTEGER NOT NULL,
+        PRIMARY KEY("identifier")
+    );
+
+
+    CREATE TABLE "messages" (
+        "identifier" TEXT NOT NULL,
+        "timestamp" INTEGER NOT NULL,
+        PRIMARY KEY("identifier")
+    );
+
+    CREATE TABLE "notifications" (
+        "identifier" TEXT NOT NULL,
+        "timestamp" INTEGER NOT NULL,
+        PRIMARY KEY("identifier")
     );
 
     CREATE TABLE "client_meta" (
@@ -39,12 +51,15 @@ pub mod v1 {
 
 
     pub const DROP_STATEMENTS: &str = r#"
-    
     DROP TABLE "call_logs";
+    DROP TABLE "messages";
+    DROP TABLE "notifications";
     DROP TABLE "client_meta";
     "#;
 
     pub const VERSION: &str = "1";
+
+    pub const META_TABLE: &str = "client_meta";
 }
 
 pub use v1 as current;
