@@ -49,7 +49,6 @@ pub mod v1 {
     INSERT INTO "client_meta" VALUES ('version', '1');
     "#;
 
-
     pub const DROP_STATEMENTS: &str = r#"
     DROP TABLE "call_logs";
     DROP TABLE "messages";

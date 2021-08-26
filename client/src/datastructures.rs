@@ -23,12 +23,12 @@ use std::{error::Error, fmt::Display};
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use serde::Deserialize;
-use sha2::{Digest, Sha256, digest::DynDigest};
+use sha2::{digest::DynDigest, Digest, Sha256};
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Configure {
     upstream: String,
-    applications: Option<Vec<String>>
+    applications: Option<Vec<String>>,
 }
 
 impl Configure {
@@ -50,9 +50,26 @@ pub struct BatteryStatus {
     current: i32,
 }
 
+impl Display for BatteryStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let status = self.get_changer_status();
+        write!(
+            f,
+            "{}\nCurrent battery level: {}",
+            match status {
+                BatteryChangerStatus::Charging => "Changer is connected.",
+                BatteryChangerStatus::Discharging => "Changer is disconnect.",
+            },
+            self.get_percentage()
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BatteryChangerStatus {
+    /// Battery is charging
     Charging,
+    /// Battery is discharging
     Discharging,
 }
 
@@ -71,6 +88,10 @@ impl BatteryStatus {
         } else {
             BatteryChangerStatus::Discharging
         }
+    }
+
+    pub fn to_current_status(&self) -> CurrentStatus {
+        CurrentStatus::from(self)
     }
 }
 
@@ -94,8 +115,19 @@ pub struct RawMessage {
 
 #[allow(dead_code)]
 #[derive(Deserialize, Clone, Debug)]
-struct RawMessageList(Vec<RawMessage>);
+pub struct RawMessageList(Vec<RawMessage>);
 
+impl RawMessageList {
+    pub fn convert_to_vec(&self) -> Vec<Message> {
+        self.0
+            .iter()
+            .map(|element| Message::from(element))
+            .collect()
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
 pub struct Message {
     threadid: u64,
     read: bool,
@@ -141,7 +173,10 @@ impl RawCallLogList {
     }
 
     pub fn convert_to_vec(&self) -> Vec<CallLog> {
-        self.0.iter().map(|element| CallLog::from(element)).collect()
+        self.0
+            .iter()
+            .map(|element| CallLog::from(element))
+            .collect()
     }
 }
 
@@ -188,7 +223,7 @@ impl From<&RawCallLog> for CallLog {
 
 impl From<&RawCallLogList> for Vec<CallLog> {
     fn from(l: &RawCallLogList) -> Self {
-       l.convert_to_vec()
+        l.convert_to_vec()
     }
 }
 
@@ -220,7 +255,7 @@ pub enum SIMState {
     Ready,
     Locked,
     NotInsert,
-    Unknown
+    Unknown,
 }
 
 impl From<&str> for SIMState {
@@ -229,7 +264,7 @@ impl From<&str> for SIMState {
             "ready" => Self::Ready,
             "pin_required" => Self::Locked,
             "absent" => Self::NotInsert,
-            _ => Self::Unknown
+            _ => Self::Unknown,
         }
     }
 }
@@ -257,8 +292,7 @@ struct RawNotification {
 #[derive(Deserialize, Clone, Debug)]
 struct RawNotificationList(Vec<RawNotification>);
 
-trait Identifier {
-
+pub trait Identifier {
     fn get_timestamp(&self) -> i64;
 
     fn get_body(&self) -> String;
@@ -305,14 +339,30 @@ impl CurrentStatus {
         self.battery_level = status.get_percentage();
     }
 
-    pub fn ne(&self, status: &BatteryStatus) -> StatusDiff {
+    pub fn not_equal(&self, status: &BatteryStatus) -> StatusDiff {
         if self.charge_status != status.get_changer_status() {
-            return StatusDiff::ChargeStatus
-        }
-        else if self.battery_level != status.get_percentage() {
-            return StatusDiff::Battery
+            return StatusDiff::ChargeStatus;
+        } else if self.battery_level != status.get_percentage() {
+            return StatusDiff::Battery;
         }
         StatusDiff::Equal
+    }
+
+    pub fn get_battery_level(&self) -> i8 {
+        self.battery_level
+    }
+
+    pub fn get_changer_status(&self) -> BatteryChangerStatus {
+        self.charge_status.clone()
+    }
+}
+
+impl From<&BatteryStatus> for CurrentStatus {
+    fn from(bs: &BatteryStatus) -> Self {
+        Self {
+            charge_status: bs.get_changer_status(),
+            battery_level: bs.get_percentage(),
+        }
     }
 }
 
@@ -320,24 +370,34 @@ impl CurrentStatus {
 pub enum StatusDiff {
     ChargeStatus,
     Battery,
-    Equal
+    Equal,
 }
 
 impl Default for CurrentStatus {
     fn default() -> Self {
-        Self { charge_status: BatteryChangerStatus::Discharging, battery_level: Default::default() }
+        Self {
+            charge_status: BatteryChangerStatus::Discharging,
+            battery_level: Default::default(),
+        }
     }
 }
 
 #[derive(Debug, Clone)]
-struct PermissionError {
-
-}
+pub struct PermissionError {}
 
 impl Error for PermissionError {}
 
 impl Display for PermissionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Permission denied, please give specify permission to termux:api app")
+        write!(
+            f,
+            "Permission denied, please give specify permission to termux:api app"
+        )
+    }
+}
+
+impl PermissionError {
+    pub fn new() -> Self {
+        Self {}
     }
 }

@@ -20,7 +20,9 @@
 
 #[cfg(test)]
 mod test {
-    use crate::datastructures::{RawCallLogList, RawDeviceInfo, SIMState, convert_string_to_timestamp};
+    use crate::datastructures::{
+        convert_string_to_timestamp, RawCallLogList, RawDeviceInfo, SIMState,
+    };
 
     #[test]
     #[should_panic]
@@ -41,7 +43,7 @@ mod test {
         "#;
 
         let logs: RawCallLogList = serde_json::from_str(s).unwrap();
-        
+
         assert_eq!(logs.len(), 5);
     }
 
