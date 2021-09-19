@@ -21,6 +21,8 @@
 mod database;
 mod datastructures;
 mod test;
+#[cfg(feature = "server")]
+mod server;
 
 use std::time::Duration;
 
