@@ -23,6 +23,7 @@ mod test {
     use crate::datastructures::{
         convert_string_to_timestamp, RawCallLogList, RawDeviceInfo, SIMState,
     };
+    use crate::{fetch_device_info, fetch_call_log, fetch_sms, fetch_battery_status};
 
     #[test]
     #[should_panic]
@@ -59,5 +60,19 @@ mod test {
         let device_info: RawDeviceInfo = serde_json::from_str(s).unwrap();
 
         assert!(matches!(device_info.get_sim_state(), SIMState::Locked));
+    }
+
+    #[test]
+    fn test_paste_function() {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async move {
+                fetch_device_info().await.unwrap();
+                fetch_call_log().await.unwrap();
+                fetch_sms().await.unwrap();
+                fetch_battery_status().await.unwrap();
+        });
     }
 }

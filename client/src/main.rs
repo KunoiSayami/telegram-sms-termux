@@ -37,7 +37,7 @@ use tokio::{process::Command, signal::ctrl_c, sync::mpsc};
 use crate::datastructures::{BatteryChangerStatus, CallLogType, RawDeviceInfo};
 
 async fn fetch_sms() -> Result<Vec<Message>> {
-    let output = Command::new("termux-message-list").output().await?.stdout;
+    let output = Command::new("termux-sms-list").output().await?.stdout;
     let output = String::from_utf8(output)?;
     let messages: RawMessageList = serde_json::from_str(&output)?;
     Ok(messages.convert_to_vec())
