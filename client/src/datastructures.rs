@@ -24,6 +24,7 @@ use anyhow::Result;
 use chrono::NaiveDateTime;
 use serde::Deserialize;
 use sha2::{digest::DynDigest, Digest, Sha256};
+use std::fmt::Formatter;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Configure {
@@ -140,6 +141,18 @@ pub fn convert_string_to_timestamp(s: &str) -> Result<i64> {
     Ok(NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")?.timestamp())
 }
 
+
+impl Message {
+    pub fn get_number(&self) -> &String {
+        &self.number
+    }
+
+    pub fn get_content(&self) -> &String {
+        &self.body
+    }
+}
+
+
 impl From<&RawMessage> for Message {
     fn from(m: &RawMessage) -> Self {
         Self {
@@ -180,7 +193,7 @@ impl RawCallLogList {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CallLogType {
     INCOMING,
     OUTGOING,
@@ -221,6 +234,16 @@ impl From<&RawCallLog> for CallLog {
     }
 }
 
+impl CallLog {
+    pub fn get_log_type(&self) -> &CallLogType {
+        &self.log_type
+    }
+
+    pub fn get_number(&self) -> &String {
+        &self.phone_number
+    }
+}
+
 impl From<&RawCallLogList> for Vec<CallLog> {
     fn from(l: &RawCallLogList) -> Self {
         l.convert_to_vec()
@@ -250,7 +273,7 @@ pub struct RawDeviceInfo {
     sim_state: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SIMState {
     Ready,
     Locked,
@@ -266,6 +289,17 @@ impl From<&str> for SIMState {
             "absent" => Self::NotInsert,
             _ => Self::Unknown,
         }
+    }
+}
+
+impl std::fmt::Display for SIMState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            SIMState::Ready => "ready",
+            SIMState::Locked => "locked",
+            SIMState::NotInsert => "not insert",
+            SIMState::Unknown => "unknown",
+        })
     }
 }
 
