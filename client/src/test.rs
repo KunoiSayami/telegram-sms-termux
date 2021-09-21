@@ -23,7 +23,7 @@ mod test {
     use crate::datastructures::{
         convert_string_to_timestamp, RawCallLogList, RawDeviceInfo, SIMState,
     };
-    use crate::{fetch_device_info, fetch_call_log, fetch_sms, fetch_battery_status};
+    use crate::{fetch_battery_status, fetch_call_log, fetch_device_info, fetch_sms};
 
     #[test]
     #[should_panic]
@@ -73,6 +73,6 @@ mod test {
                 fetch_call_log().await.unwrap();
                 fetch_sms().await.unwrap();
                 fetch_battery_status().await.unwrap();
-        });
+            });
     }
 }

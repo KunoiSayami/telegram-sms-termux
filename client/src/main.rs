@@ -20,9 +20,9 @@
 
 mod database;
 mod datastructures;
-mod test;
 #[cfg(feature = "server")]
 mod server;
+mod test;
 
 use std::time::Duration;
 
@@ -61,7 +61,10 @@ async fn fetch_battery_status() -> Result<BatteryStatus> {
 }
 
 async fn fetch_device_info() -> Result<RawDeviceInfo> {
-    let output = Command::new("termux-telephony-deviceinfo").output().await?.stdout;
+    let output = Command::new("termux-telephony-deviceinfo")
+        .output()
+        .await?
+        .stdout;
     let output = String::from_utf8(output)?;
     if output.contains("Error") {
         return Err(anyhow::Error::new(PermissionError::new()));
@@ -71,15 +74,15 @@ async fn fetch_device_info() -> Result<RawDeviceInfo> {
 
 async fn upstream(mut message_rx: mpsc::Receiver<InnerCommand>) -> Result<()> {
     loop {
-        if let Ok(Some(cmd)) =
-            tokio::time::timeout(Duration::from_secs(1), message_rx.recv()).await {
-                match cmd {
-                    InnerCommand::Message(msg) => {
-                        todo!()
-                    }
-                    InnerCommand::Terminate => break,
+        if let Ok(Some(cmd)) = tokio::time::timeout(Duration::from_secs(1), message_rx.recv()).await
+        {
+            match cmd {
+                InnerCommand::Message(msg) => {
+                    todo!()
                 }
+                InnerCommand::Terminate => break,
             }
+        }
     }
     Ok(())
 }
@@ -129,7 +132,8 @@ async fn query_loop(
                 .send(InnerCommand::Message(format!(
                     "[System information]Sim card {status}",
                     status = current_sim_status
-                ))).await?;
+                )))
+                .await?;
             sim_status = current_sim_status;
         }
 
@@ -139,43 +143,49 @@ async fn query_loop(
                 if let Ok(None) = sqlx::query(r#"SELECT * FROM "messages" WHERE "identifier" = ? "#)
                     .bind(&identifier)
                     .fetch_optional(&mut conn)
-                    .await {
+                    .await
+                {
                     message_tx
                         .send(InnerCommand::Message(format!(
                             "[Receive SMS]\nFrom: {sender}\nContent: {content}",
                             sender = message.get_number(),
                             content = message.get_content()
-                        ))).await?;
+                        )))
+                        .await?;
                     if let Err(ref e) = sqlx::query(r#"INSERT INTO "messages" VALUES (?, ?)"#)
                         .bind(&identifier)
                         .bind(message.get_timestamp())
                         .execute(&mut conn)
-                        .await {
+                        .await
+                    {
                         log::error!("Got error while insert message: {:?}", e);
                     }
                 }
             }
         }
 
-
         if let Ok(call_logs) = fetch_call_log().await {
             for call_log in &call_logs {
                 if call_log.get_log_type() != &CallLogType::MISSED {
-                    continue
+                    continue;
                 }
                 let identifier = call_log.get_identifier();
-                if let Ok(None) = sqlx::query(r#"SELECT * FROM "call_logs" WHERE "identifier" = ? "#)
-                    .bind(&identifier)
-                    .fetch_optional(&mut conn)
-                    .await {
+                if let Ok(None) =
+                    sqlx::query(r#"SELECT * FROM "call_logs" WHERE "identifier" = ? "#)
+                        .bind(&identifier)
+                        .fetch_optional(&mut conn)
+                        .await
+                {
                     message_tx
                         .send(InnerCommand::Message(format!(
                             "[Missed Call]\nCall from: {number}",
                             number = call_log.get_number()
-                        ))).await?;
+                        )))
+                        .await?;
                     if let Err(ref e) = sqlx::query(r#"INSERT INTO "call_logs" VALUES (?, ?)"#)
                         .execute(&mut conn)
-                        .await {
+                        .await
+                    {
                         log::error!("Got error while insert call log: {:?}", e);
                     }
                 }
@@ -234,7 +244,7 @@ async fn async_main<'a>(matches: &ArgMatches<'a>) -> Result<()> {
             .await?;
         for call_log in call_logs? {
             if call_log.get_log_type() != &CallLogType::MISSED {
-                continue
+                continue;
             }
             sqlx::query(r#"INSERT INTO "call_logs" (?, ?)"#)
                 .bind(call_log.get_identifier())
@@ -252,7 +262,7 @@ async fn async_main<'a>(matches: &ArgMatches<'a>) -> Result<()> {
     }
     let (msg_tx, msg_rx) = mpsc::channel(1024);
     let (query_tx, query_rx) = mpsc::channel(1024);
-    let query_task = tokio::task::spawn(query_loop(conn,msg_tx.clone(), query_rx));
+    let query_task = tokio::task::spawn(query_loop(conn, msg_tx.clone(), query_rx));
     let upstream_task = tokio::task::spawn(upstream(msg_rx));
 
     loop {
